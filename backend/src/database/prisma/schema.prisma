@@ -1,0 +1,135 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Session model to group messages and character files
+model WalletWorkspace {
+  id           String         @id @default(uuid())
+  notionToken  String
+  notionData   Json
+  workspaceId  String         @unique
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  wallets      Wallet[]
+}
+
+model Wallet {
+  id              String          @id
+  address         String          @unique
+  chainType       String
+  workspaceId     String
+  workspace       WalletWorkspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  transactions    Transaction[]
+  keyPair         WalletKeyPair?  // Relation to key pair
+  balance         String          @default("0")  // Current balance in MIST
+  lastSyncAt      DateTime?       // Last time balance was synced
+  scheduledTransactions ScheduledTransaction[]
+  nfts            NFT[]
+  receivedTransactions ReceivedTransaction[]
+
+  // Notion database IDs
+  notionPageId    String?
+  nftDatabaseId   String?
+  transactionsDatabaseId String?
+  subWalletsDatabaseId String?
+  scheduleTransactionsDatabaseId String?
+  receivedTransactionsDatabaseId String?
+
+  @@index([workspaceId])
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  hash        String   @unique
+  from        String
+  to          String
+  value       String   // in wei
+  status      String   // PENDING, SUCCESS, FAILED
+  walletId    String
+  wallet      Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  notionPageId String?  // ID of the corresponding Notion page
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([walletId])
+  @@index([notionPageId])
+}
+
+// New model for storing wallet key pairs securely
+model WalletKeyPair {
+  id          String   @id @default(uuid())
+  walletId    String   @unique
+  wallet      Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  publicKey   String   // Base64 encoded public key
+  privateKey  String   // Encrypted private key
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([walletId])
+}
+
+model ScheduledTransaction {
+  id              String   @id @default(uuid())
+  notionPageId    String   @unique
+  walletId        String
+  wallet          Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  transactionName String
+  toAddress       String
+  amount          String   // in MIST
+  scheduleDate    DateTime
+  adminStatus     String   // SCHEDULED, APPROVED
+  operataStatus   String   // PENDING, PROCESSING, COMPLETED, FAILED
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([walletId])
+  @@index([notionPageId])
+}
+
+model NFT {
+  id              String   @id @default(uuid())
+  notionPageId    String   @unique
+  walletId        String
+  wallet          Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  name            String
+  tokenId         String
+  contractAddress String
+  attributes      Json?    // Store NFT attributes as JSON
+  description     String?
+  imageUrl        String?
+  receiveDate     DateTime?
+  transactionHash String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([walletId])
+  @@index([notionPageId])
+}
+
+model ReceivedTransaction {
+  id              String   @id @default(uuid())
+  notionPageId    String   @unique
+  walletId        String
+  wallet          Wallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  fromAddress     String
+  amount          String   // in MIST
+  tokenName       String
+  transactionHash String
+  date            DateTime
+  status          String   // PENDING, CONFIRMED, FAILED
+  notes           String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([walletId])
+  @@index([notionPageId])
+}
+
