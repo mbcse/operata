@@ -2,9 +2,9 @@
 
 import config from '@/app/config';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 
-export default function NotionCallback() {
+function NotionCallbackContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [status, setStatus] = useState<'loading' | 'error' | 'success'>('loading');
@@ -79,5 +79,17 @@ export default function NotionCallback() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function NotionCallback() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <h2 className="text-xl font-semibold mb-2">Loading...</h2>
+      </div>
+    }>
+      <NotionCallbackContent />
+    </Suspense>
   );
 }
